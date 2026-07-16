@@ -6,6 +6,8 @@
 
 **Video link:** https://youtu.be/jzoFGU5RuRM
 
+**Tool Link:** https://sammyboi1801.github.io/depth-of-field-visualizations/ 
+
 **Late days taken:** 2
 
 ---
