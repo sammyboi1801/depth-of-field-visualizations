@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Depth of Field — Interactive Lab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060b18;--bg2:#0c1425;--border:#1e3a5f;
+  --accent:#38bdf8;--muted:#64748b;--text:#e2e8f0;
+  --green:#34d399;--red:#f87171;--amber:#fbbf24;
+}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+nav{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);padding:0 .5rem;flex-shrink:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}
+.tb{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:.85rem .8rem;font:600 .7rem/1 system-ui;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.tb:hover{color:#94a3b8}
+.tb.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel{display:none;flex:1;flex-direction:column;overflow:hidden}
+.panel.active{display:flex}
+.cv{flex:1;overflow:hidden;position:relative;min-height:180px}
+canvas{display:block;width:100%;height:100%}
+.ctrl{background:var(--bg2);border-top:1px solid var(--border);padding:.7rem 1rem;display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap;justify-content:center;flex-shrink:0;max-height:42vh;overflow-y:auto}
+.cg{display:flex;flex-direction:column;gap:5px;min-width:140px;flex:1 1 140px;max-width:280px}
+.cg label{font:600 .7rem/1 system-ui;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:flex;justify-content:space-between}
+.cg .val{color:var(--accent);font-family:monospace;font-size:.85rem}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--border);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--accent);cursor:pointer;margin-top:-5.5px;transition:transform .1s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);background:var(--accent)}
+.hud{background:rgba(10,18,36,.9);border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem;font:.72rem/1.7 monospace;min-width:200px;flex:1 1 200px;max-width:300px}
+.hud .k{color:var(--muted)}
+.hud .v{color:var(--accent);font-weight:600}
+.hud .ok{color:var(--green)}
+.hud .bad{color:var(--red)}
+.badge{display:inline-block;padding:.2rem .6rem;border-radius:4px;font-size:.7rem;font-weight:700;letter-spacing:.5px;margin-left:.4rem}
+.badge.ok{background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.badge.bad{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+
+@media (max-width: 480px){
+  .tb{padding:.7rem .55rem;font-size:.62rem}
+  .ctrl{padding:.55rem .6rem;gap:.7rem;max-height:48vh}
+  .cg{min-width:120px;flex-basis:120px}
+  .hud{min-width:160px;flex-basis:160px;font-size:.68rem;padding:.6rem .7rem}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="tb active" data-tab="0">1 — Thin Lens & Rays</button>
+  <button class="tb" data-tab="1">2 — Circle of Confusion</button>
+  <button class="tb" data-tab="2">3 — Four Factors</button>
+</nav>
+
+<!-- TAB 0 -->
+<div class="panel active" id="p0">
+  <div class="cv"><canvas id="c0"></canvas></div>
+  <div class="ctrl">
+    <div class="cg">
+      <label>Sensor position <span class="val" id="v0s">140</span> mm</label>
+      <input type="range" id="r0s" min="105" max="260" value="140">
+    </div>
+    <div class="hud">
+      <div><span class="k">Far object (red):   </span><span class="v bad" id="s0a">blurry</span></div>
+      <div><span class="k">Subject (green):    </span><span class="v ok"  id="s0b">in focus</span></div>
+      <div><span class="k">Near object (blue): </span><span class="v bad" id="s0c">blurry</span></div>
+    </div>
+    <div class="hud">
+      <div><span class="k">Thin lens equation:</span></div>
+      <div style="color:#e2e8f0;font-size:.95rem;margin-top:4px">1/Z<sub>i</sub> + 1/Z<sub>o</sub> = 1/f</div>
+      <div style="margin-top:8px"><span class="k">Drag slider to shift</span></div>
+      <div><span class="k">the sensor plane →</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 1 -->
+<div class="panel" id="p1">
+  <div class="cv"><canvas id="c1"></canvas></div>
+  <div class="ctrl">
+    <div class="cg" style="min-width:300px">
+      <label>Object distance <span class="val" id="v1d">300</span> mm</label>
+      <input type="range" id="r1d" min="115" max="800" value="300">
+    </div>
+    <div class="hud">
+      <div><span class="k">CoC radius:    </span><span class="v" id="h1coc">—</span></div>
+      <div><span class="k">Threshold:     </span><span class="v">20 px</span></div>
+      <div><span class="k">Image at:      </span><span class="v" id="h1img">—</span></div>
+      <div><span class="k">Status:        </span><span class="v" id="h1st">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2 -->
+<div class="panel" id="p2">
+  <div class="cv"><canvas id="c2"></canvas></div>
+  <div class="ctrl">
+    <div class="cg">
+      <label>Aperture <span class="val" id="v2a">f/4.0</span></label>
+      <input type="range" id="r2a" min="14" max="160" value="40">
+    </div>
+    <div class="cg">
+      <label>Focal length <span class="val" id="v2f">50</span> mm</label>
+      <input type="range" id="r2f" min="24" max="200" value="50">
+    </div>
+    <div class="cg">
+      <label>Distance <span class="val" id="v2d">5.0</span> m</label>
+      <input type="range" id="r2d" min="10" max="200" value="50">
+    </div>
+    <div class="cg">
+      <label>Sensor <span class="val" id="v2s">Full frame</span></label>
+      <input type="range" id="r2s" min="0" max="2" value="1" step="1">
+    </div>
+    <div class="hud">
+      <div><span class="k">Near limit:  </span><span class="v" id="h2near">—</span></div>
+      <div><span class="k">Far limit:   </span><span class="v" id="h2far">—</span></div>
+      <div><span class="k">Total DoF:   </span><span class="v" id="h2dof">—</span></div>
+      <div><span class="k">Hyperfocal:  </span><span class="v" id="h2hyp">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TAU = Math.PI * 2;
+
+// ── Canvas refs ─────────────────────────────────────────────────
+const cvs = [0,1,2].map(i => {
+  const c = document.getElementById('c'+i);
+  return { c, ctx: c.getContext('2d') };
+});
+
+function resize() {
+  cvs.forEach(({c}) => {
+    c.width  = c.parentElement.clientWidth;
+    c.height = c.parentElement.clientHeight;
+  });
+}
+resize();
+window.addEventListener('resize', () => { resize(); drawAll(); });
+
+// ── Shared helpers ───────────────────────────────────────────────
+function grid(ctx, W, H) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(30,58,95,0.35)';
+  ctx.lineWidth = .5;
+  for (let x=0;x<=W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for (let y=0;y<=H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.restore();
+}
+
+function glowLine(ctx, x1, y1, x2, y2, col, alpha=.65, lw=1.5, blur=7) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = blur; ctx.shadowColor = col;
+  ctx.strokeStyle = col; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.restore();
+}
+
+function glowDot(ctx, x, y, r, fill, glow) {
+  ctx.save();
+  ctx.shadowBlur = 12; ctx.shadowColor = glow||fill;
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ctx.arc(x,y,r,0,TAU); ctx.fill();
+  ctx.restore();
+}
+
+function lens(ctx, x, cy, h) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x, cy-h/2);
+  ctx.quadraticCurveTo(x+22, cy, x, cy+h/2);
+  ctx.quadraticCurveTo(x-22, cy, x, cy-h/2);
+  ctx.fillStyle = 'rgba(255,255,255,.05)';
+  ctx.fill();
+  ctx.shadowBlur=14; ctx.shadowColor='rgba(255,255,255,.5)';
+  ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=2;
+  ctx.stroke(); ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+function sensorLine(ctx, x, cy, h) {
+  ctx.save();
+  ctx.shadowBlur=14; ctx.shadowColor='#fff';
+  ctx.strokeStyle='#fff'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(x,cy-h); ctx.lineTo(x,cy+h); ctx.stroke();
+  ctx.shadowBlur=0; ctx.restore();
+  ctx.fillStyle='#94a3b8'; ctx.font='10px monospace';
+  ctx.fillText('SENSOR', x+6, cy-h+12);
+}
+
+function label(ctx, text, x, y, col, sz='12px') {
+  ctx.save(); ctx.fillStyle=col||'#94a3b8'; ctx.font=sz+' system-ui'; ctx.fillText(text,x,y); ctx.restore();
+}
+
+function camIcon(ctx, x, cy) {
+  ctx.save();
+  ctx.fillStyle='#334155';
+  rrect(ctx, x-22, cy-10, 44, 22, 4); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, cy+2, 7, 0, TAU);
+  ctx.fillStyle='#060b18'; ctx.fill();
+  ctx.strokeStyle='#38bdf8'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#475569';
+  rrect(ctx, x-7, cy-17, 14, 8, 3); ctx.fill();
+  ctx.restore();
+}
+
+function personIcon(ctx, x, y, col) {
+  ctx.save(); ctx.strokeStyle=col||'#fff'; ctx.fillStyle=col||'#fff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(x, y-22, 5, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(x,y-17); ctx.lineTo(x,y-4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x-8,y-12); ctx.lineTo(x+8,y-12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x,y-4); ctx.lineTo(x-6,y+8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x,y-4); ctx.lineTo(x+6,y+8); ctx.stroke();
+  ctx.restore();
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+function ruler(ctx, W, H, cy, camX, pxPerM, maxM) {
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(camX,cy+1); ctx.lineTo(W-40,cy+1); ctx.stroke();
+  const te = maxM>25?5:maxM>10?2:1;
+  for(let m=0;m<=maxM;m+=te){
+    const x=camX+m*pxPerM;
+    ctx.strokeStyle='rgba(100,116,139,.45)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,cy-4); ctx.lineTo(x,cy+8); ctx.stroke();
+    ctx.fillStyle='#475569'; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText(m+'m',x,cy+20);
+  }
+  ctx.textAlign='left'; ctx.restore();
+}
+
+// ── DoF formulas ─────────────────────────────────────────────────
+const fmts=[{name:'Micro 4/3',coc:.015},{name:'APS-C',coc:.020},{name:'Full frame',coc:.030}];
+
+function dof(f_mm, N, s_m, c_mm) {
+  const s=s_m*1000, H=(f_mm*f_mm)/(N*c_mm)+f_mm;
+  let near=(H*s)/(H+s-f_mm)/1000;
+  let far =(H*s)/(H-s+f_mm)/1000;
+  if(far<0||far>9999) far=Infinity;
+  if(near<0) near=0;
+  return {near,far,H_m:H/1000};
+}
+
+// ── Smooth animation harness ─────────────────────────────────────
+// Sliders used to snap the diagrams instantly on every 'input' event.
+// Instead, each continuous slider now has a target (what the user set)
+// and a current animated value that eases toward it every frame — makes
+// dragging feel fluid rather than jittery, especially at low drag speeds.
+// pulseT drives a slow shared "breathing" glow on in-focus indicators.
+const anim = {};
+let pulseT = 0;
+function bindAnim(el, key){
+  anim[key] = { cur:+el.value, tgt:+el.value };
+  el.addEventListener('input', ()=>{ anim[key].tgt = +el.value; });
+}
+
+// ── TAB 0: Ray Diagram ───────────────────────────────────────────
+const r0s=document.getElementById('r0s');
+bindAnim(r0s,'r0s');
+
+function drawT0(){
+  const {c,ctx}=cvs[0]; const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H); grid(ctx,W,H);
+  const cy=H/2, lH=H*.28;
+  const sV=anim.r0s.cur;
+  document.getElementById('v0s').textContent=Math.round(sV);
+
+  const f0=H*.20, zi0=H*.28;
+  const zoGreen0=f0*zi0/(zi0-f0);
+  const zoFar0=zoGreen0*1.55;
+  const maxSensorOffset0=H*.4;
+  const marginL=44, marginR=64;
+  const availableSpan=W-marginL-marginR;
+  const scale=Math.min(1, availableSpan/(zoFar0+maxSensorOffset0));
+
+  const f=f0*scale, zi_default=zi0*scale;
+  const zo_green=zoGreen0*scale, zo_far=zoFar0*scale;
+  const maxSensorOffset=maxSensorOffset0*scale;
+
+  let lensX = Math.max(W*.46, zo_far+marginL);
+  if (lensX+maxSensorOffset > W-marginR) {
+    lensX = Math.max(zo_far+marginL, W-marginR-maxSensorOffset);
+  }
+
+  const sensorX=lensX+sV*(maxSensorOffset/260);
+
+  ctx.save(); ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+  ctx.setLineDash([6,12]); ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W,cy); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+
+  ['f','f'].forEach((lbl,i)=>{
+    const fx=lensX+(i===0?f:-f);
+    ctx.save(); ctx.strokeStyle='rgba(100,116,139,.3)'; ctx.lineWidth=1;
+    ctx.setLineDash([3,6]); ctx.beginPath(); ctx.moveTo(fx,cy-6); ctx.lineTo(fx,cy+6); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+    ctx.fillStyle='#475569'; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText(lbl,fx,cy+17); ctx.textAlign='left';
+  });
+
+  const objs=[
+    {zo:zo_far,        yOff:-H*.085, col:'#f87171', lbl:'Far object'},
+    {zo:zo_green,      yOff:0,        col:'#34d399', lbl:'Subject (focused)'},
+    {zo:zo_green*.62,  yOff:H*.085,   col:'#38bdf8', lbl:'Near object'},
+  ];
+
+  const thresh=4, ids=['s0a','s0b','s0c'];
+
+  objs.forEach((obj,idx)=>{
+    const objX=lensX-obj.zo, objY=cy+obj.yOff;
+    const zi=(f*obj.zo)/(obj.zo-f);
+    const imgX=lensX+zi;
+    const imgY=cy-obj.yOff*(zi/obj.zo);
+
+    const lTop=cy-lH/2, lBot=cy+lH/2;
+
+    function linY(x,x1,y1,x2,y2){ return y1+(y2-y1)*(x-x1)/(x2-x1); }
+
+    const r1sY=linY(sensorX,lensX,lTop,imgX,imgY);
+    const r2sY=linY(sensorX,lensX,lBot,imgX,imgY);
+
+    glowLine(ctx,objX,objY,lensX,lTop,obj.col,.45,1.4,7);
+    glowLine(ctx,objX,objY,lensX,lBot,obj.col,.45,1.4,7);
+    glowLine(ctx,lensX,lTop,sensorX+20,linY(sensorX+20,lensX,lTop,imgX,imgY),obj.col,.45,1.4,5);
+    glowLine(ctx,lensX,lBot,sensorX+20,linY(sensorX+20,lensX,lBot,imgX,imgY),obj.col,.45,1.4,5);
+    glowLine(ctx,objX,objY,sensorX+20,linY(sensorX+20,objX,objY,imgX,imgY),obj.col,.25,1,4);
+
+    const cocMid=(r1sY+r2sY)/2, cocR=Math.abs(r1sY-r2sY)/2;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(sensorX,cocMid,Math.max(cocR,1.5),0,TAU);
+    if(cocR<=thresh){
+      const pulse=1+0.35*Math.sin(pulseT/450);
+      ctx.shadowBlur=14*pulse; ctx.shadowColor=obj.col; ctx.fillStyle=obj.col; ctx.fill();
+    } else {
+      ctx.strokeStyle=obj.col; ctx.lineWidth=2; ctx.shadowBlur=6; ctx.shadowColor=obj.col; ctx.stroke();
+    }
+    ctx.restore();
+
+    glowDot(ctx,objX,objY,5,'#fff',obj.col);
+    ctx.save(); ctx.fillStyle=obj.col; ctx.font='12px system-ui'; ctx.fillText(obj.lbl,objX+8,objY-13); ctx.restore();
+
+    if(imgX>lensX&&imgX<W-20) glowDot(ctx,imgX,imgY,3,obj.col+'99',obj.col);
+
+    const ok=cocR<=thresh;
+    const el=document.getElementById(ids[idx]);
+    el.textContent=ok?'in focus':'blurry'; el.className='v '+(ok?'ok':'bad');
+  });
+
+  lens(ctx,lensX,cy,lH);
+  sensorLine(ctx,sensorX,cy,H*.28);
+  ctx.save(); ctx.strokeStyle='rgba(100,116,139,.35)'; ctx.lineWidth=1; ctx.setLineDash([4,6]);
+  ctx.beginPath(); ctx.moveTo(lensX,cy+H*.34); ctx.lineTo(sensorX,cy+H*.34); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  ctx.fillStyle='#475569'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('Zᵢ',lensX+(sensorX-lensX)/2,cy+H*.34+13); ctx.textAlign='left';
+}
+
+// ── TAB 1: Circle of Confusion ──────────────────────────────────
+const r1d=document.getElementById('r1d');
+bindAnim(r1d,'r1d');
+const COC_MAX=20;
+
+function drawT1(){
+  const {c,ctx}=cvs[1]; const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H); grid(ctx,W,H);
+  const cy=H/2, lH=H*.3, aperR=lH/2;
+
+  // The "observer's view" panel used to be positioned at a fixed W*.82,
+  // computed independently of the ray diagram. When the diagram auto-scaled
+  // to fit narrower/taller canvases, its sensor + extended rays would land
+  // on top of that panel. Fix: size and reserve the panel's footprint FIRST,
+  // then lay the ray diagram out only in the space that's left — so the two
+  // can never collide, at any canvas size.
+  // Panel size used to be capped at a small fixed 62px radius. On a tall
+  // canvas the lens/rays scale up with H but the panel didn't — so it ended
+  // up looking like a tiny orphaned box stuck in the corner. Tying vR to the
+  // lens height keeps it visually proportionate to the rest of the diagram
+  // at any canvas size, while the width cap keeps it from taking over on
+  // narrow screens.
+  let vR = lH*0.45; vR=Math.max(24, Math.min(vR,150)); vR=Math.min(vR, W*.16);
+  const panelHalfW=vR+26, panelGap=18;
+  const panelZone=panelHalfW*2+panelGap;
+
+  const marginL=30, marginR=panelZone+16, extPad=40;
+  const S0=H/500, f0=110*S0, objDistPx0_max=800*S0;
+  const variableSpan0=objDistPx0_max+f0*1.45;
+  const availableSpan=Math.max(180, W-marginL-marginR-extPad);
+  const scale=Math.min(1, availableSpan/variableSpan0);
+
+  const S=S0*scale;
+  const f=f0*scale;
+  const objDistPx_max=objDistPx0_max*scale;
+
+  let lensX = Math.max(W*.28, objDistPx_max+marginL);
+  if (lensX+f*1.45+extPad > W-marginR) {
+    lensX = Math.max(objDistPx_max+marginL, W-marginR-f*1.45-extPad);
+  }
+  const sensorX=lensX+f*1.45;
+
+  const raw=anim.r1d.cur;
+  document.getElementById('v1d').textContent=Math.round(raw);
+  const objDistPx=raw*S;
+  const objX=lensX-objDistPx;
+
+  const zo=objDistPx;
+  const zi=(f*zo)/(zo-f);
+  const imgX=lensX+zi;
+
+  function lerp(x,x1,y1,x2,y2){return y1+(y2-y1)*(x-x1)/(x2-x1);}
+
+  const tY_s=lerp(sensorX,lensX,cy-aperR,imgX,cy);
+  const bY_s=lerp(sensorX,lensX,cy+aperR,imgX,cy);
+  const cocR=Math.abs(tY_s-bY_s)/2;
+  const cocCy=(tY_s+bY_s)/2;
+  const col=cocR<=COC_MAX?'#34d399':'#f87171';
+
+  ctx.save(); ctx.strokeStyle='rgba(255,255,255,.07)'; ctx.lineWidth=1;
+  ctx.setLineDash([6,12]); ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(W*.73,cy); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(objX,cy); ctx.lineTo(lensX,cy-aperR); ctx.lineTo(imgX,cy); ctx.lineTo(lensX,cy+aperR); ctx.closePath();
+  ctx.fillStyle='rgba(56,189,248,.06)'; ctx.fill(); ctx.restore();
+
+  glowLine(ctx,objX,cy,lensX,cy-aperR,'#38bdf8',.7,1.5,8);
+  glowLine(ctx,objX,cy,lensX,cy+aperR,'#38bdf8',.7,1.5,8);
+
+  const rightEdge=W-panelZone-8;
+  const ext=Math.min(sensorX+60, rightEdge);
+  glowLine(ctx,lensX,cy-aperR,ext,lerp(ext,lensX,cy-aperR,imgX,cy),col,.65,1.5,6);
+  glowLine(ctx,lensX,cy+aperR,ext,lerp(ext,lensX,cy+aperR,imgX,cy),col,.65,1.5,6);
+
+  if(imgX>lensX&&imgX<rightEdge) glowDot(ctx,imgX,cy,3,col,col);
+
+  ctx.save(); ctx.strokeStyle='rgba(100,116,139,.3)'; ctx.lineWidth=1; ctx.setLineDash([4,6]);
+  ctx.beginPath(); ctx.moveTo(lensX,cy+H*.35); ctx.lineTo(Math.min(imgX,rightEdge),cy+H*.35); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+  ctx.fillStyle='#475569'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('Zᵢ',lensX+(Math.min(imgX,rightEdge)-lensX)/2,cy+H*.35+13); ctx.textAlign='left';
+
+  lens(ctx,lensX,cy,lH);
+
+  glowDot(ctx,objX,cy,6,'#fff','#38bdf8');
+  ctx.save(); ctx.fillStyle='#38bdf8'; ctx.font='12px system-ui'; ctx.fillText('Point source',objX+9,cy-14); ctx.restore();
+
+  sensorLine(ctx,sensorX,cy,H*.28);
+
+  // Panel sits in the zone we reserved above — guaranteed clear of the diagram.
+  const vX=W-panelHalfW-10;
+  const panelTop=vR+30, panelBot=vR+44;
+  let vY=Math.min(cy, H-panelBot-10);
+  vY=Math.max(vY, panelTop+10);
+
+  ctx.save();
+  ctx.shadowBlur=0;
+  rrect(ctx,vX-panelHalfW,vY-vR-30,panelHalfW*2,vR*2+74,10);
+  ctx.fillStyle='rgba(10,18,36,.88)'; ctx.fill();
+  ctx.strokeStyle=cocR<=COC_MAX?'rgba(52,211,153,.3)':'rgba(248,113,113,.3)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.restore();
+
+  ctx.save(); ctx.setLineDash([5,5]);
+  ctx.strokeStyle='rgba(52,211,153,.45)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(vX,vY,COC_MAX,0,TAU); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
+
+  ctx.save();
+  ctx.beginPath(); ctx.arc(vX,vY,Math.max(cocR,1.5),0,TAU);
+  const focusPulse=cocR<=COC_MAX?1+0.3*Math.sin(pulseT/450):1;
+  ctx.shadowBlur=20*focusPulse; ctx.shadowColor=col;
+  ctx.fillStyle=col+'4a'; ctx.fill();
+  ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+  ctx.shadowBlur=0; ctx.restore();
+
+  ctx.textAlign='center';
+  ctx.fillStyle='#94a3b8'; ctx.font='10px monospace';
+  ctx.fillText("OBSERVER'S VIEW",vX,vY-vR-18);
+  ctx.fillStyle='#fff'; ctx.font='11px monospace';
+  ctx.fillText('CoC = '+cocR.toFixed(1)+'px',vX,vY+3);
+  ctx.fillStyle='rgba(52,211,153,.55)'; ctx.font='10px monospace';
+  ctx.fillText('threshold',vX+COC_MAX+2,vY-1);
+  ctx.fillStyle=col; ctx.font='bold 14px system-ui';
+  ctx.fillText(cocR<=COC_MAX?'IN FOCUS':'BLURRY',vX,vY+vR+26);
+  ctx.textAlign='left';
+
+  document.getElementById('h1coc').textContent=cocR.toFixed(1)+' px';
+  document.getElementById('h1img').textContent=zi.toFixed(0)+' px';
+  const st=document.getElementById('h1st');
+  st.textContent=cocR<=COC_MAX?'IN FOCUS':'BLURRY'; st.className='v '+(cocR<=COC_MAX?'ok':'bad');
+}
+
+// ── TAB 2: Four Factors ──────────────────────────────────────────
+const r2a=document.getElementById('r2a'),r2f=document.getElementById('r2f'),
+      r2d=document.getElementById('r2d'),r2s=document.getElementById('r2s');
+bindAnim(r2a,'r2a'); bindAnim(r2f,'r2f'); bindAnim(r2d,'r2d');
+// r2s (sensor format) is a discrete 3-way selector, left unanimated — an
+// interpolated fractional index would flicker between formats mid-transition.
+// It's read straight from the slider each frame by the render loop below.
+
+function drawT2(){
+  const {c,ctx}=cvs[2]; const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H); grid(ctx,W,H);
+
+  const N=anim.r2a.cur/10, f_mm=anim.r2f.cur;
+  const s_m=anim.r2d.cur/10, fmt=fmts[parseInt(r2s.value)];
+
+  document.getElementById('v2a').textContent='f/'+N.toFixed(1);
+  document.getElementById('v2f').textContent=f_mm;
+  document.getElementById('v2d').textContent=s_m.toFixed(1);
+  document.getElementById('v2s').textContent=fmt.name;
+
+  const {near,far,H_m}=dof(f_mm,N,s_m,fmt.coc);
+
+  document.getElementById('h2near').textContent=near.toFixed(2)+' m';
+  document.getElementById('h2far').textContent=far===Infinity?'∞ (hyperfocal reached)':far.toFixed(2)+' m';
+  document.getElementById('h2dof').textContent=far===Infinity?'∞':(far-near).toFixed(2)+' m';
+  document.getElementById('h2hyp').textContent=H_m.toFixed(1)+' m';
+
+  const cy=H*.46, camX=60;
+  const maxD=Math.min(Math.max(far===Infinity?H_m*1.5:far*1.25,s_m*2.2,5),80);
+  const pxM=(W-120)/maxD;
+  const mToX=m=>camX+m*pxM;
+
+  ruler(ctx,W,H,cy+10,camX,pxM,maxD);
+
+  const nearX=mToX(near), farX=far===Infinity?W-40:Math.min(mToX(far),W-40);
+  const zh=H*.22;
+
+  const zg=ctx.createLinearGradient(0,cy-zh,0,cy+zh);
+  zg.addColorStop(0,'rgba(52,211,153,0)'); zg.addColorStop(.5,'rgba(52,211,153,.2)'); zg.addColorStop(1,'rgba(52,211,153,0)');
+  ctx.fillStyle=zg; ctx.fillRect(nearX,cy-zh,farX-nearX,zh*2);
+
+  ctx.save(); ctx.shadowBlur=10; ctx.shadowColor='#34d399';
+  ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(nearX,cy-zh); ctx.lineTo(nearX,cy+zh); ctx.stroke();
+  if(far!==Infinity){ctx.beginPath(); ctx.moveTo(farX,cy-zh); ctx.lineTo(farX,cy+zh); ctx.stroke();}
+  ctx.shadowBlur=0; ctx.restore();
+
+  ctx.fillStyle='rgba(52,211,153,.65)'; ctx.font='11px monospace'; ctx.textAlign='center';
+  ctx.fillText('IN FOCUS',(nearX+Math.min(farX,W-80))/2,cy-zh-7);
+  ctx.fillStyle='#34d399'; ctx.font='11px monospace';
+  ctx.fillText(near.toFixed(1)+'m',nearX,cy-zh-18);
+  if(far!==Infinity) ctx.fillText(far.toFixed(1)+'m',farX,cy-zh-18);
+  ctx.textAlign='left';
+
+  personIcon(ctx,mToX(s_m),cy+12,'#38bdf8');
+  camIcon(ctx,camX,cy);
+
+  if(H_m<maxD){
+    const hx=mToX(H_m);
+    ctx.save(); ctx.strokeStyle='rgba(251,191,36,.6)'; ctx.lineWidth=1.5; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(hx,cy-zh-15); ctx.lineTo(hx,cy+zh+15); ctx.stroke();
+    ctx.setLineDash([]); ctx.shadowBlur=6; ctx.shadowColor='#fbbf24';
+    ctx.fillStyle='#fbbf24'; ctx.font='bold 10px monospace'; ctx.textAlign='center';
+    ctx.fillText('H (hyperfocal)',hx,cy-zh-19);
+    ctx.shadowBlur=0; ctx.restore(); ctx.textAlign='left';
+  }
+
+  const sideMargin=W<520?18:50;
+  const bh=Math.max(48, Math.min(H*.18, 78));
+  const bw=(W-sideMargin*2-30)/4;
+  const dy=Math.min(cy+zh+50, H-bh-10);
+  const factors=[
+    {lbl:'APERTURE',val:'f/'+N.toFixed(1),pct:1-(N-1.4)/(16-1.4),col:'#38bdf8'},
+    {lbl:'FOCAL LENGTH',val:f_mm+'mm',pct:(f_mm-24)/(200-24),col:'#a78bfa'},
+    {lbl:'DISTANCE',val:s_m.toFixed(1)+'m',pct:1-(s_m-0.5)/(20-0.5),col:'#34d399'},
+    {lbl:'SENSOR SIZE',val:fmt.name,pct:parseInt(r2s.value)/2,col:'#fbbf24'},
+  ];
+
+  factors.forEach((f,i)=>{
+    const bx=sideMargin+i*(bw+10);
+    ctx.save();
+    rrect(ctx,bx,dy,bw,bh,6);
+    ctx.fillStyle='rgba(13,21,38,.7)'; ctx.fill();
+    ctx.strokeStyle='rgba(30,58,95,.8)'; ctx.lineWidth=1; ctx.stroke();
+
+    ctx.fillStyle='#475569'; ctx.font='600 9px system-ui';
+    ctx.fillText(f.lbl,bx+10,dy+14);
+
+    const barX=bx+10, barY=dy+30, barW=bw-20, barH=6;
+    ctx.fillStyle='rgba(30,58,95,.8)'; ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(barX,barY,barW,barH,3):rrect(ctx,barX,barY,barW,barH,3); ctx.fill();
+
+    ctx.save(); ctx.shadowBlur=8; ctx.shadowColor=f.col;
+    ctx.fillStyle=f.col; ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(barX,barY,barW*f.pct,barH,3):rrect(ctx,barX,barY,barW*f.pct,barH,3); ctx.fill();
+    ctx.shadowBlur=0; ctx.restore();
+
+    ctx.fillStyle=f.col; ctx.font='bold 12px monospace';
+    ctx.fillText(f.val,bx+10,dy+bh-12);
+
+    const smaller=f.pct<.5;
+    const dofLabel=i===1||i===2?(smaller?'deeper DoF':'shallower DoF'):(smaller?'shallower DoF':'deeper DoF');
+    ctx.fillStyle='rgba(100,116,139,.7)'; ctx.font='10px system-ui';
+    ctx.fillText(dofLabel,bx+10,dy+bh-1);
+    ctx.restore();
+  });
+}
+
+// ── Tab switching ────────────────────────────────────────────────
+document.querySelectorAll('.tb').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const i=parseInt(btn.dataset.tab);
+    document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('p'+i).classList.add('active');
+    resize(); drawAll();
+  });
+});
+
+function drawAll(){ drawT0(); drawT1(); drawT2(); }
+
+// Single shared render loop: eases every animated slider value toward its
+// target and re-draws every frame. This also drives pulseT, so the
+// in-focus glow keeps gently breathing even when nothing is being dragged.
+function tick(t){
+  pulseT = t;
+  for (const k in anim){
+    const a = anim[k];
+    const d = a.tgt - a.cur;
+    a.cur = Math.abs(d) > 0.03 ? a.cur + d*0.22 : a.tgt;
+  }
+  drawAll();
+  requestAnimationFrame(tick);
+}
+drawAll();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
