@@ -1,10 +1,12 @@
-# Assessment #1 — Depth of Field
+# Assessment #1 - Depth of Field
 
 **Name:** Sam Selvaraj
-**Course:** CS 5330 — Assessment #1: Classical Vision Topics
+**Course:** CS 5330 - Assessment #1: Classical Vision Topics
 **Topic:** Depth of Field
 
-**Video link:** [PASTE YOUR YOUTUBE/UPLOAD LINK HERE]
+**Video link:** https://youtu.be/jzoFGU5RuRM
+
+**Late days taken:** 2
 
 ---
 
@@ -12,11 +14,15 @@
 
 I got depth of field as one of my two topics and picked it over the other one mostly because I actually take photos as a hobby, so I already had some intuition for it going in. I just didn't know the actual math behind why it works the way it does. 
 
-Building the video around the thin lens model from lecture was the easiest part since we'd just covered it, so I could lean on that instead of re-deriving everything from scratch. The circle of confusion was the concept I spent the most time on — it's simple once it clicks (a blur disc that's small enough just looks like a point) but I went back and forth on how to explain "small enough" without it sounding hand-wavy, since the threshold really is just something we define, not a hard physical cutoff. I really enjoyed making the visualizations. They helped me explain the concept better!
+Building the video around the thin lens model from lecture was the easiest part since we'd just covered it, so I could lean on that instead of re-deriving everything from scratch. The circle of confusion was the concept I spent the most time on. It's simple once it clicks (a blur disc that's small enough just looks like a point) but I went back and forth on how to explain "small enough" without it sounding hand-wavy, since the threshold really is just something we define, not a hard physical cutoff. I really enjoyed making the visualizations. They helped me explain the concept better!
 
-I added the eye/accommodation slide because while researching I found it was a nice parallel — the eye does basically the same thing a camera does (change effective aperture via the pupil, refocus via the lens), and it gave me a way to connect the physics back to something everyone already has direct experience with, without adding a topic that overlaps with anyone else's assessment. I feel this was necessary to understand how depth of field causes the tilt-shift effect that we see!
+I added the eye/accommodation slide because while researching I found it was a nice parallel. The eye does basically the same thing a camera does (change effective aperture via the pupil, refocus via the lens), and it gave me a way to connect the physics back to something everyone already has direct experience with, without adding a topic that overlaps with anyone else's assessment. I feel this was necessary to understand how depth of field causes the tilt-shift effect that we see!
 
-I wanted to show a few pictures that I had captured and editted for the tilt-shift effect but could not. So here it goes :P
+I wanted to show a few pictures that I had editted to demonstrate how tilt-shift effect can be replicated by just applying a gaussian blur filter at an angle. Unfortunately, the video was too long for that!
+
+So, here it goes :P
+
+<img width="1920" height="2560" alt="tilt-shift using gradient blur" src="https://github.com/user-attachments/assets/c2cbccad-e7be-47f4-8792-676ed3dee5ad" />
 
 
 
